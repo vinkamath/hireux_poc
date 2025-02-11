@@ -49,27 +49,22 @@ async def on_message(message):
         try:
             RAG_response = query_engine.query(query)
 
-            # Check if the message was sent in a thread. If so respond in that thread. Otherwise create one.
-            if message.channel.type == discord.ChannelType.public_thread:
+            if isinstance(message.channel, discord.Thread):
                 await message.channel.send(str(RAG_response))
-                print(f"Sent response in thread: {RAG_response}")
+                print(f"Sent response to existing thread: {RAG_response}")
             else:
-                # Create a new thread
-                try:
-                    thread = await message.channel.create_thread(
-                        name=f"RAG Response to {message.author.name}",
-                        reason="Responding to RAG query"
-                    )
-                    await thread.send(str(RAG_response))
-                    print(f"Created thread and sent response: {RAG_response}")
-
-                except Exception as e:
-                    await message.channel.send(f"Could not create thread: {e}")  # Fallback if thread creation fails
-                    await message.channel.send(str(RAG_response)) # Send response in channel as fallback
+                thread = await message.channel.create_thread(
+                    name=f"RAG Response to {message.author.name}",
+                    reason="Responding to RAG query",
+                    type=discord.ChannelType.public_thread
+                )
+                await thread.send(str(RAG_response))
+                print(f"Created thread and sent response: {RAG_response}")
 
         except Exception as e:
-            await message.channel.send(f"An error occurred: {e}")
-            print(f"Error during query processing: {e}")
+            await message.channel.send(f"An error occurred creating the thread: {e}")
+            print(f"Error creating thread: {e}")
+
     else:
         await message.channel.send("Please start your message with '!rag' to use the RAG model.")
 
