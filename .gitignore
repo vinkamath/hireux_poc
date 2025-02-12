@@ -1,4 +1,8 @@
 .DS_Store
-.ipynb_checkpoints/*
+.ipynb_checkpoints/
 *.pyc
 *.env
+
+chroma_db/
+data/input/raw
+data/input/portfolios

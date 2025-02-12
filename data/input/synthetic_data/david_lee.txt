@@ -1,0 +1,20 @@
+Candidate Name: David Lee
+Portfolio URL: https://www.davidleedesigns.com
+
+Skills and Experience:
+* 3 years of experience as a UI/UX Designer.
+* Strong visual design skills.
+* Proficient in Figma, Sketch, and Adobe Creative Suite.
+* Experience creating design systems and component libraries.
+* Knowledge of front-end development (HTML, CSS, JavaScript).
+
+Key Projects:
+Project Name: Design System for a Fintech Company
+  Problem: Company needed a consistent design system to improve efficiency and brand consistency.
+  Solution: Created a comprehensive design system, including UI components, style guides, and documentation.
+  Role: UI/UX Designer, responsible for the visual design and implementation of the design system.
+
+Project Name: Mobile App UI Design
+  Problem: Startup needed a visually appealing and user-friendly UI for their new mobile app.
+Solution: Designed the UI for the mobile app, focusing on usability and aesthetics.
+  Role: UI Designer, worked closely with the UX designer and developers.

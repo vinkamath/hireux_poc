@@ -1,0 +1,20 @@
+Candidate Name: Ben Carter
+Portfolio URL: https://bencarterdesign.net
+
+Skills and Experience:
+* 4 years of experience as a UX Designer, focused on web applications.
+* Skilled in user research, wireframing, prototyping, and usability testing.
+* Proficient in Figma and Adobe XD.
+* Experience working in Agile development environments.
+* Strong understanding of responsive design principles.
+
+Key Projects:
+Project Name: SaaS Dashboard Design
+  Problem: Company needed a user-friendly dashboard for their new SaaS product.
+  Solution: Designed a clean, intuitive dashboard that allows users to easily access and manage their data.
+  Role: UX Designer, worked closely with developers and product managers.
+
+Project Name: Landing Page Optimization
+  Problem: Low conversion rate on a marketing landing page.
+  Solution: Redesigned the landing page to improve clarity and call-to-actions, resulting in a significant increase in conversions.
+  Role: UX Designer, conducted A/B testing and analyzed user behavior.

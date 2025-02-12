@@ -1,0 +1,20 @@
+Candidate Name: Emily Wilson
+Portfolio URL: https://emilywilsondesign.io
+
+Skills and Experience:
+* 2+ years of experience in UX Design and Prototyping.
+* Proficient in Figma, including interactive prototyping.
+* Experience with user testing and gathering feedback.
+* Basic knowledge of front-end development.
+
+Key Projects:
+
+Project Name:  Interactive Prototype for a Social Media App
+    Problem:  The team needed a high-fidelity prototype to test a new feature for a social media app.
+    Solution:  Created a fully interactive prototype in Figma, simulating the user flow and interactions.
+    Role:  UX Designer/Prototyper
+
+Project Name: E-commerce Website Redesign (Partial)
+    Problem:  The product pages of an e-commerce site needed to be redesigned for better usability.
+    Solution:  Redesigned the product page layout and created interactive prototypes to test different variations.
+    Role: UX Designer, focused on prototyping and user testing.

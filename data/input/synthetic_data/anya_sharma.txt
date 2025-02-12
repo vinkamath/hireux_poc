@@ -1,0 +1,21 @@
+Candidate Name: Anya Sharma
+Portfolio URL: https://www.anyasharmadesign.com
+
+Skills and Experience:
+* 7+ years experience in UX/UI design, specializing in mobile app design.
+* Proficient in user research, including user interviews, surveys, and usability testing.
+* Expert in Figma, Sketch, Adobe XD, and InVision.
+* Strong understanding of iOS and Android design guidelines.
+* Experience leading design sprints and collaborating with cross-functional teams.
+* Experience with accessibility (WCAG) guidelines.
+
+Key Projects:
+Project Name: "FitTrack" Mobile App Redesign
+  Problem: Existing fitness app had low user retention and a confusing interface.
+  Solution: Conducted user research, redesigned the information architecture, and created a more intuitive and engaging user experience.
+  Role: Lead UX/UI Designer, responsible for all aspects of the design process.
+
+Project Name: "E-Commerce Checkout Flow Optimization"
+  Problem: High cart abandonment rate on an e-commerce website.
+  Solution: Identified usability issues in the checkout process and designed a streamlined, user-friendly checkout flow.
+  Role: UX Designer, conducted A/B testing and user interviews.

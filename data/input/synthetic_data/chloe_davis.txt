@@ -1,0 +1,20 @@
+Candidate Name: Chloe Davis
+Portfolio URL: N/A
+
+Skills and Experience:
+* 5+ years of experience in UX design, with a focus on user research.
+* Expert in qualitative and quantitative research methods.
+* Skilled in creating user personas, journey maps, and user flows.
+* Proficient in usability testing and analysis.
+* Experience presenting research findings to stakeholders.
+
+Key Projects:
+Project Name: User Research for Mobile Banking App
+  Problem: Bank wanted to understand user needs and pain points for their mobile app.
+  Solution: Conducted extensive user research, including interviews, surveys, and usability testing, to identify key areas for improvement.
+  Role: Lead UX Researcher, responsible for all aspects of the research process.
+
+Project Name: Usability Testing for E-commerce Website
+  Problem: E-commerce website had usability issues that were impacting sales.
+  Solution: Conducted usability testing to identify and prioritize usability problems, and provided recommendations for improvements.
+  Role: UX Researcher, worked with designers and developers to implement changes.
