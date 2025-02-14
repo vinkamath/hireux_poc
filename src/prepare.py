@@ -3,10 +3,18 @@ import os
 import openai
 import dotenv
 import json
+import logging
 
 dotenv.load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger("ingest")
 
 
 def extract_text_from_pdf(pdf_path):
@@ -18,7 +26,7 @@ def extract_text_from_pdf(pdf_path):
             text += page.get_text()
         doc.close()
     except Exception as e:
-        print(f"Error processing {pdf_path}: {e}")
+        logger.info(f"Error processing {pdf_path}: {e}")
         return None  # Return None if there's an error
     return text
 
@@ -74,7 +82,7 @@ def extract_portfolio_data_with_llm(text):
             json_response = json_response[len("```json"):]
         return json.loads(json_response)
     except Exception as e:
-        print(f"Error during LLM extraction: {e}")
+        logger.info(f"Error during LLM extraction: {e}")
         return None
 
 
@@ -130,9 +138,9 @@ Skills and Experience:
             output_file_path = os.path.join(output_dir, f"{candidate_name}_portfolio.txt")
             with open(output_file_path, "w", encoding="utf-8") as outfile:
                 outfile.write(output_text)
-            print(f"Processed {candidate_name} and saved to {output_file_path}")
+            logger.info(f"Processed {candidate_name} and saved to {output_file_path}")
         else:
-            print(f"LLM extraction failed for {candidate_name}")
+            logger.info(f"LLM extraction failed for {candidate_name}")
 
 
 if __name__ == "__main__":

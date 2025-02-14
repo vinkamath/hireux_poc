@@ -12,7 +12,12 @@ dotenv.load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CHROMA_DB_PATH = "chroma_db"  # Path to your ChromaDB database directory
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger("ingest")
 
 def ingest_data():
     Settings.llm = OpenAI(model="gpt-4o", api_key=OPENAI_API_KEY)  # Ensure you have your OPENAI_API_KEY set
@@ -20,6 +25,8 @@ def ingest_data():
     Settings.node_parser = SentenceSplitter(chunk_size=512, chunk_overlap=20)
     Settings.num_output = 512
     Settings.context_window = 3900
+    logger.info("Settings loaded successfully.")
+    exit()
 
     # Load documents
     reader = SimpleDirectoryReader(input_dir="data/input/processed", recursive=True)
@@ -37,7 +44,7 @@ def ingest_data():
     VectorStoreIndex.from_documents(
         documents, storage_context=storage_context
     )
-    print("Data ingestion and indexing complete.")
+    logging.info("Data ingestion and indexing complete.")
 
 
 if __name__ == "__main__":
