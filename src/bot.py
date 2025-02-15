@@ -96,6 +96,14 @@ async def on_message(message):
                 similarity_top_k=3,
             )
 
+            # Log retrieved nodes
+            nodes_with_scores = await asyncio.to_thread(retriever.retrieve, full_prompt)
+            logger.info("Retrieved Nodes:")
+            for node_with_score in nodes_with_scores:
+                logger.info(f"Node Score: {node_with_score.score:.3f}")
+                logger.info(f"Node Text:\n{node_with_score.node.get_content()}")
+                logger.info("---")
+
             # Set up response synthesizer
             response_synthesizer = get_response_synthesizer()
 
