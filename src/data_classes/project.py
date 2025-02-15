@@ -111,7 +111,3 @@ def generate_prompt_and_example(dataclass_type: type) -> tuple[str, str]:
     )
     example_json = json.dumps(example_data, indent=4)
     return prompt, example_json
-# Generate prompt and example
-prompt, example_json = generate_prompt_and_example(Project)
-print("Prompt:\n", prompt)
-print("\nExample JSON:\n", example_json)
