@@ -1,13 +1,14 @@
 import fitz  # PyMuPDF
 import os
-import openai
+from openai import OpenAI
 import dotenv
 import json
 import logging
+from template.data_classes import Candidate
+from common.utility import write_dataclass_to_yaml
 
 dotenv.load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
+client = OpenAI()
 
 # Configure logging
 logging.basicConfig(
@@ -32,54 +33,29 @@ def extract_text_from_pdf(pdf_path):
 
 def extract_portfolio_data_with_llm(text):
     """Extracts structured data from portfolio text using an LLM."""
+
     prompt = f"""
     You are an experienced rectuiter tasked with extracting structured data from UX designer portfolios and resumes.
-    The input text contains information from a candidate's portfolio and/or resume.
-
-    Extract the following information and return it as a JSON object:
-
-    {{
-      "candidate_name": "Candidate's Full Name",
-      "portfolio_url": "URL of the candidate's online portfolio (if found, otherwise null)",
-      "skills_and_experience": [
-        "A list of the candidate's skills and experience, expressed as concise bullet points."
-      ],
-      "key_projects": [
-        {{
-          "project_name": "Name of the project",
-          "problem": "Brief description of the problem the project addressed",
-          "solution": "Brief description of the solution the candidate provided",
-          "role": "The candidate's role in the project"
-        }},
-        ... (more projects)
-      ]
-    }}
-
-    If any information is not found, set its value to null.  Do not make up information.
-
+    Please summarize the candidate's portfolio accurately. Do not make up any information. If you are unsure about any field, leave it empty.
     Input Text:
     ```
     {text}
     ```
     """
     try:
-        response = openai.chat.completions.create(
-            model="gpt-4o",  # Or another suitable model
+        completion = client.beta.chat.completions.parse(
+            model="gpt-o3-mini",  
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.0,  # Lower temperature for more deterministic output
             max_tokens=16000,  # Adjust as needed based on your input text length
+            response_format=Candidate  # Use the Candidate dataclass for structured output
         )
 
         # Parse the JSON response
-        json_response = response.choices[0].message.content
-        # Remove the ```json and ``` blocks, if present
-        if json_response.endswith("```"):
-            json_response = json_response[:-len("```")]
-        if json_response.startswith("```json"):
-            json_response = json_response[len("```json"):]
+        json_response = completion.choices[0].message.content
         return json.loads(json_response)
     except Exception as e:
         logger.info(f"Error during LLM extraction: {e}")
@@ -106,44 +82,22 @@ def process_portfolio_pdfs(input_dir, output_dir):
             text = extract_text_from_pdf(pdf_path)
             if text:
                 combined_text += text + "\n\n"
+            else:
+                logger.info(f"Failed to extract text from {pdf_path}")
+                continue
 
         # --- LLM-BASED EXTRACTION ---
         structured_data = extract_portfolio_data_with_llm(combined_text)
 
         if structured_data:  # Proceed only if extraction was successful
-            # --- FORMATTING FOR OUTPUT ---
-            output_text = f"""Candidate Name: {structured_data.get('candidate_name', 'N/A')}
-Portfolio URL: {structured_data.get('portfolio_url', 'N/A')}
-
-Skills and Experience:
-"""
-            skills = structured_data.get('skills_and_experience', [])
-            if skills:
-              for skill in skills:
-                  output_text += f"* {skill}\n"
-            else:
-              output_text+= "No skills extracted.\n"
-
-            output_text += "\nKey Projects:\n"
-            projects = structured_data.get('key_projects', [])
-            if projects:
-              for project in projects:
-                  output_text += f"Project Name: {project.get('project_name', 'N/A')}\n"
-                  output_text += f"  Problem: {project.get('problem', 'N/A')}\n"
-                  output_text += f"  Solution: {project.get('solution', 'N/A')}\n"
-                  output_text += f"  Role: {project.get('role', 'N/A')}\n\n"
-            else:
-                output_text += "No projects extracted.\n"
-
             output_file_path = os.path.join(output_dir, f"{candidate_name}_portfolio.txt")
-            with open(output_file_path, "w", encoding="utf-8") as outfile:
-                outfile.write(output_text)
+            write_dataclass_to_yaml(structured_data, output_file_path)
             logger.info(f"Processed {candidate_name} and saved to {output_file_path}")
         else:
             logger.info(f"LLM extraction failed for {candidate_name}")
 
 
 if __name__ == "__main__":
-    input_pdf_directory = "data/input/raw/RHarris"
+    input_pdf_directory = "data/input/raw/AJain"
     output_text_directory = "data/input/portfolios"
     process_portfolio_pdfs(input_pdf_directory, output_text_directory)
