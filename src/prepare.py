@@ -1,11 +1,13 @@
-import fitz  # PyMuPDF
 import os
-from openai import OpenAI
 import dotenv
 import json
 import logging
-from template.data_classes import Candidate
+from openai import OpenAI
+from data_classes.candidate import Candidate
+from data_classes.project import Project
+from data_classes.utility import generate_prompt
 from common.utility import write_dataclass_to_yaml
+from google import genai
 
 dotenv.load_dotenv()
 client = OpenAI()
@@ -18,86 +20,87 @@ logging.basicConfig(
 logger = logging.getLogger("ingest")
 
 
-def extract_text_from_pdf(pdf_path):
-    """Extracts text from a PDF using PyMuPDF."""
-    text = ""
+def process_portfolio(input_dir: str):
+    """Processes the portfolio PDFs in the input directory."""
+
+     # Configure the genai client with error handling
     try:
-        doc = fitz.open(pdf_path)
-        for page in doc:
-            text += page.get_text()
-        doc.close()
+        client = genai.Client()
     except Exception as e:
-        logger.info(f"Error processing {pdf_path}: {e}")
-        return None  # Return None if there's an error
-    return text
+        print(f"Error configuring Gemini API: {e}")
+        return
 
-def extract_portfolio_data_with_llm(text):
-    """Extracts structured data from portfolio text using an LLM."""
+    candidate_data = {}  # Dictionary to store all candidate related information.
+    projects = []
 
-    prompt = f"""
-    You are an experienced rectuiter tasked with extracting structured data from UX designer portfolios and resumes.
-    Please summarize the candidate's portfolio accurately. Do not make up any information. If you are unsure about any field, leave it empty.
-    Input Text:
-    ```
-    {text}
-    ```
-    """
     try:
-        completion = client.beta.chat.completions.parse(
-            model="gpt-o3-mini",  
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.0,  # Lower temperature for more deterministic output
-            max_tokens=16000,  # Adjust as needed based on your input text length
-            response_format=Candidate  # Use the Candidate dataclass for structured output
-        )
-
-        # Parse the JSON response
-        json_response = completion.choices[0].message.content
-        return json.loads(json_response)
+        filenames = [f for f in os.listdir(input_dir) if f.endswith(".pdf")]
+    except FileNotFoundError:
+        print(f"Error: Input directory '{input_dir}' not found.")
+        return
     except Exception as e:
-        logger.info(f"Error during LLM extraction: {e}")
-        return None
+        print("Exception occurred: ", e)
+        return
 
+    for filename in filenames:
+        filepath = os.path.join(input_dir, filename)
+        file_parts = filename[:-4].split("_")  # Remove '.pdf' and split
+        if len(file_parts) < 2:
+            print(f"Skipping improperly formatted filename: {filename}")
+            continue
 
-def process_portfolio_pdfs(input_dir, output_dir):
-    """Processes PDFs, extracts text, uses LLM for structured data, and saves."""
+        candidate_name = file_parts[0] # Extract the candidate name.
+        page_type = file_parts[1].lower()
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+        if page_type == "home":
+            continue  # Skip Home files
 
-    candidate_files = {}
-    for filename in os.listdir(input_dir):
-        if filename.endswith(".pdf"):
-            candidate_name = filename.split('_')[0]
-            if candidate_name not in candidate_files:
-                candidate_files[candidate_name] = []
-            candidate_files[candidate_name].append(os.path.join(input_dir, filename))
+        try:
+            my_file = client.files.upload(file=filepath) # No need for string literal 'file='
+        except Exception as e:
+            print("Exception in file upload", e)
+            continue
 
-    for candidate_name, pdf_paths in candidate_files.items():
-        combined_text = ""
-        for pdf_path in pdf_paths:
-            text = extract_text_from_pdf(pdf_path)
-            if text:
-                combined_text += text + "\n\n"
-            else:
-                logger.info(f"Failed to extract text from {pdf_path}")
-                continue
-
-        # --- LLM-BASED EXTRACTION ---
-        structured_data = extract_portfolio_data_with_llm(combined_text)
-
-        if structured_data:  # Proceed only if extraction was successful
-            output_file_path = os.path.join(output_dir, f"{candidate_name}_portfolio.txt")
-            write_dataclass_to_yaml(structured_data, output_file_path)
-            logger.info(f"Processed {candidate_name} and saved to {output_file_path}")
+        if page_type == "resume":
+            prompt = generate_prompt(Candidate)
+            dataclass_type = Candidate
         else:
-            logger.info(f"LLM extraction failed for {candidate_name}")
+            prompt = generate_prompt(Project)
+            dataclass_type = Project
+
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=[prompt, my_file],
+                config={
+                    'response_mime_type': 'application/json',
+                    'response_schema': dataclass_type
+                }
+            )
+            parsed_response = json.loads(response.text)
+
+            if dataclass_type == Candidate:
+                # candidate_data.update(parsed_response)  # Merge candidate info
+                candidate_data = parsed_response # Store complete candidate data.
+                candidate_data['name'] = candidate_name # Use the name from file.
+            elif dataclass_type == Project:
+                projects.append(parsed_response)
+
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON for {filename}: {e}")
+            print(f"Response text:\n{response.text}")
+            continue
+        except Exception as e:
+            print(f"An unexpected error occurred processing {filename}: {e}")
+            continue
+
+    # Combine candidate data and projects
+    candidate_data["projects"] = projects  # Add projects to candidate
+
+    print(json.dumps(candidate_data, indent=4))
+
 
 
 if __name__ == "__main__":
-    input_pdf_directory = "data/input/raw/AJain"
-    output_text_directory = "data/input/portfolios"
-    process_portfolio_pdfs(input_pdf_directory, output_text_directory)
+
+    process_portfolio("data/input/raw/AJain")
