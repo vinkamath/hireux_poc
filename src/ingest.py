@@ -22,14 +22,13 @@ logger = logging.getLogger("ingest")
 def ingest_data():
     Settings.llm = OpenAI(model="gpt-4o", api_key=OPENAI_API_KEY)  # Ensure you have your OPENAI_API_KEY set
     Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small", api_key=OPENAI_API_KEY)
-    Settings.node_parser = SentenceSplitter(chunk_size=512, chunk_overlap=20)
+    Settings.node_parser = SentenceSplitter(chunk_size=512, chunk_overlap=128 )
     Settings.num_output = 512
     Settings.context_window = 3900
     logger.info("Settings loaded successfully.")
-    exit()
 
     # Load documents
-    reader = SimpleDirectoryReader(input_dir="data/input/processed", recursive=True)
+    reader = SimpleDirectoryReader(input_dir="data/output/portfolio", recursive=True)
     documents = reader.load_data()
 
     # Create Chroma client and collection
