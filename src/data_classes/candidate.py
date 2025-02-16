@@ -62,6 +62,13 @@ class Candidate:
             "example": '["UX Design", "UI Design", "User Research", "Prototyping"]',
         },
     )
+    awards: List[str] = field(
+        default_factory=list,
+        metadata={
+            "description": "A list of the candidate's awards and recognitions.",
+            "example": '["Best UX Design", "Most Innovative Project", "Top Performer"]',
+        },
+    )
     experience: List[Experience] = field(
         default_factory=list,
         metadata={"description": "A list of the candidate's work experiences."}

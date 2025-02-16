@@ -4,6 +4,5 @@
 *.env
 
 chroma_db/
-data/input/raw
-data/input/portfolios
+data/
 src/scratch

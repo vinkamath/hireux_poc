@@ -21,7 +21,7 @@ class Project:
     )
     problem_description: str = field(
         metadata={
-            "description": "A description of the problem the project was solving in 2-3 sentences.",
+            "description": "A description of the problem the project was solving.",
             "example": '"Users were experiencing difficulty navigating the existing website."',
         }
     )
