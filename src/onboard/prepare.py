@@ -15,35 +15,40 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger("ingest")
 
 
 class OnboardPortfolios:
-    def __init__(self, input_dir: str, output_dir: str):
+    def __init__(self, input_root_dir: str, output_dir: str):
         """Initialize OnboardPortfolios with input and output directories.
-        
+
         Args:
-            input_dir: Directory containing portfolio PDFs
+            input_root_dir: Root directory containing portfolio subdirectories.
             output_dir: Directory for processed output
         """
         # Configure logging
         self.logger = logging.getLogger("ingest")
-        self.input_dir = input_dir
+        self.input_root_dir = input_root_dir  # Store the root input directory
         self.output_dir = output_dir
-        self.candidate_data = {}
-        self.projects = []
-        
+
         # Initialize Gemini client
         try:
             self.client = genai.Client()
         except Exception as e:
             self.logger.error(f"Error configuring Gemini API: {e}")
             raise
-            
+
         # Ensure output directory exists
         os.makedirs(self.output_dir, exist_ok=True)
-        
-    def create_structured_portfolio(self):
+
+    def create_structured_portfolio(self, input_dir: str):
         """Process all portfolio PDFs in the input directory."""
+        self.input_dir = input_dir  # Set input directory
+
+        # Local variables for each portfolio
+        candidate_data = {}
+        projects = []
+
         try:
             filenames = [f for f in os.listdir(self.input_dir) if f.endswith(".pdf")]
         except FileNotFoundError:
@@ -62,7 +67,7 @@ class OnboardPortfolios:
                 self.logger.info(f"Skipping improperly formatted filename: {filename}")
                 continue
 
-            candidate_name = file_parts[0] # Extract the candidate name.
+            candidate_name = file_parts[0]  # Extract the candidate name.
             page_type = file_parts[1].lower()
 
             if page_type in ("home", "aboutme"):
@@ -71,7 +76,7 @@ class OnboardPortfolios:
 
             try:
                 self.logger.info(f"Uploading file: {filename}")
-                my_file = self.client.files.upload(file=filepath) # No need for string literal 'file='
+                my_file = self.client.files.upload(file=filepath)
             except Exception as e:
                 self.logger.info("Exception in file upload", e)
                 continue
@@ -98,11 +103,9 @@ class OnboardPortfolios:
                 parsed_response = json.loads(response.text)
 
                 if dataclass_type == Candidate:
-                    # candidate_data.update(parsed_response)  # Merge candidate info
-                    self.candidate_data = parsed_response # Store complete candidate data.
+                    candidate_data = parsed_response  # Store complete candidate data.
                 elif dataclass_type == Project:
-                    #logger.info(json.dumps(parsed_response, indent=4))
-                    self.projects.append(parsed_response)
+                    projects.append(parsed_response)
 
             except json.JSONDecodeError as e:
                 self.logger.info(f"Error parsing JSON for {filename}: {e}")
@@ -113,12 +116,40 @@ class OnboardPortfolios:
                 continue
 
         # Combine candidate data and projects
-        self.candidate_data["projects"] = self.projects  # Add projects to candidate
+        candidate_data["projects"] = projects  # Add projects to candidate
 
-        write_json_to_yaml(self.candidate_data, self.output_dir)   
+        write_json_to_yaml(candidate_data, self.output_dir)
 
+    def _get_portfolios(self) -> list:
+        """Helper function to get all portfolio subdirectories."""
+        portfolio_dirs = []
+        try:
+            for item in os.listdir(self.input_root_dir):
+                item_path = os.path.join(self.input_root_dir, item)
+                if os.path.isdir(item_path):
+                    portfolio_dirs.append(item_path)
+        except FileNotFoundError:
+            self.logger.error(f"Error: Input root directory '{self.input_root_dir}' not found.")
+            return []  # Return empty list if directory not found
+        except Exception as e:
+            self.logger.error(f"Exception occurred while listing directories: {e}")
+            return []
+
+        return portfolio_dirs
+
+    def create_structured_portfolios(self):
+        """Creates structured portfolios for all subdirectories in the input root directory."""
+        portfolio_dirs = self._get_portfolios()
+        if not portfolio_dirs:
+            self.logger.warning(f"No portfolio directories found in '{self.input_root_dir}'.")
+            return
+
+        for portfolio_dir in portfolio_dirs:
+            self.logger.info(f"Processing portfolio directory: {portfolio_dir}")
+            # No need to reset data here anymore
+            self.create_structured_portfolio(portfolio_dir)
 
 
 if __name__ == "__main__":
-    onboarder = OnboardPortfolios("data/input/raw/AKhomutov", "data/output/portfolio")
-    onboarder.create_structured_portfolio()
+    onboarder = OnboardPortfolios("data/input/raw", "data/output/portfolio")  # Pass input root and output
+    onboarder.create_structured_portfolios()
