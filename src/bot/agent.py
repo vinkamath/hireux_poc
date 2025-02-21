@@ -6,13 +6,14 @@ from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.llms.openai import OpenAI
 
+from .chat import send_response_in_thread
+
 # Load settings for LlamaIndex
 Settings.llm = OpenAI(model="gpt-4o")
 Settings.num_output = 512
 Settings.context_window = 3900
 
 
-from chat import send_response_in_thread
 
 logger = logging.getLogger("bot.agent")
 

@@ -4,8 +4,9 @@ import os
 import dotenv
 import logging
 
-from vectordb import load_index
-import agent
+from . import agent
+from .vectordb import load_index
+from .chat import send_response_in_thread
 
 dotenv.load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -15,36 +16,11 @@ client = discord.Client(intents=intents)
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger("bot")
-
-
-async def send_response_in_thread(message: discord.Message, response_text: str):
-    """Sends the response in a thread, handling thread creation and errors."""
-    try:
-        if isinstance(message.channel, discord.Thread):
-            await message.channel.send(response_text)
-            logger.info(f"Sent response to existing thread: {response_text}")
-        else:
-            thread = await message.channel.create_thread(
-                name=f"RAG Response to {message.author.name}",
-                reason="Responding to RAG query",
-                type=discord.ChannelType.public_thread
-            )
-            await thread.send(response_text)
-            logger.info(f"Created thread and sent response: {response_text}")
-    except discord.errors.Forbidden as e:
-        await message.channel.send(
-            "I don't have permission to create threads or send messages in threads in this channel.  "
-            "Please grant me the 'Create Public Threads' and 'Send Messages in Threads' permissions."
-        )
-        logger.error(f"Permission error creating thread: {e}")
-    except Exception as e:
-        await message.channel.send(f"An error occurred creating the thread: {e}")
-        logger.exception(f"Error creating thread: {e}")
 
 
 @client.event

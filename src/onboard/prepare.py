@@ -2,7 +2,6 @@ import os
 import dotenv
 import json
 import logging
-from openai import OpenAI
 from data_classes.candidate import Candidate
 from data_classes.project import Project
 from data_classes.utility import generate_prompt
@@ -10,7 +9,6 @@ from common.utility import write_json_to_yaml
 from google import genai
 
 dotenv.load_dotenv()
-client = OpenAI()
 
 # Configure logging
 logging.basicConfig(
