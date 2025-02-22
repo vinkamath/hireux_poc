@@ -15,7 +15,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
-logger = logging.getLogger("ingest")
 
 
 class OnboardPortfolios:
@@ -26,10 +25,10 @@ class OnboardPortfolios:
             input_root_dir: Root directory containing portfolio subdirectories.
             output_dir: Directory for processed output
         """
-        # Configure logging
         self.logger = logging.getLogger("ingest")
-        self.input_root_dir = input_root_dir  # Store the root input directory
+        self.input_root_dir = input_root_dir  
         self.output_dir = output_dir
+        self.missing_resumes = []  
 
         # Initialize Gemini client
         try:
@@ -43,7 +42,7 @@ class OnboardPortfolios:
 
     def create_structured_portfolio(self, input_dir: str):
         """Process all portfolio PDFs in the input directory."""
-        self.input_dir = input_dir  # Set input directory
+        self.input_dir = input_dir  
 
         # Local variables for each portfolio
         candidate_data = {}
@@ -60,6 +59,10 @@ class OnboardPortfolios:
 
         self.logger.info(f"Processing {len(filenames)} files in directory: {self.input_dir}")
 
+        # Collect all project files first
+        project_files = []
+        resume_file = None
+
         for filename in filenames:
             filepath = os.path.join(self.input_dir, filename)
             file_parts = filename[:-4].split("_")  # Remove '.pdf' and split
@@ -67,7 +70,6 @@ class OnboardPortfolios:
                 self.logger.info(f"Skipping improperly formatted filename: {filename}")
                 continue
 
-            candidate_name = file_parts[0]  # Extract the candidate name.
             page_type = file_parts[1].lower()
 
             if page_type in ("home", "aboutme"):
@@ -76,43 +78,56 @@ class OnboardPortfolios:
 
             try:
                 self.logger.info(f"Uploading file: {filename}")
-                my_file = self.client.files.upload(file=filepath)
+                uploaded_file = self.client.files.upload(file=filepath)
+                
+                if page_type == "resume":
+                    resume_file = uploaded_file
+                else:
+                    project_files.append(uploaded_file)
+                    
             except Exception as e:
                 self.logger.info("Exception in file upload", e)
                 continue
 
-            if page_type == "resume":
-                self.logger.info(f"Processing Resume file: {filename}")
-                prompt = generate_prompt(Candidate)
-                dataclass_type = Candidate
-            else:
-                self.logger.info(f"Processing Project file: {filename}")
-                prompt = generate_prompt(Project)
-                dataclass_type = Project
-
+        # Process resume first if available
+        if resume_file:
             try:
-                self.logger.info(f"Generating content for file: {filename}")
+                prompt = generate_prompt(Candidate)
                 response = self.client.models.generate_content(
                     model='gemini-2.0-flash',
-                    contents=[prompt, my_file],
+                    contents=[prompt, resume_file],
                     config={
                         'response_mime_type': 'application/json',
-                        'response_schema': dataclass_type
+                        'response_schema': Candidate
+                    }
+                )
+                candidate_data = json.loads(response.text)
+            except Exception as e:
+                self.logger.info(f"Error processing resume: {e}")
+                candidate_data = {}
+        else:
+            # Get candidate name from directory path
+            candidate_name = os.path.basename(self.input_dir)
+            self.logger.warning(f"No resume found for candidate: {candidate_name}")
+            self.missing_resumes.append(candidate_name)
+
+        # Process all project files
+        projects = []
+        for project_file in project_files:
+            try:
+                prompt = generate_prompt(Project)
+                response = self.client.models.generate_content(
+                    model='gemini-2.0-flash',
+                    contents=[prompt, project_file],
+                    config={
+                        'response_mime_type': 'application/json',
+                        'response_schema': Project
                     }
                 )
                 parsed_response = json.loads(response.text)
-
-                if dataclass_type == Candidate:
-                    candidate_data = parsed_response  # Store complete candidate data.
-                elif dataclass_type == Project:
-                    projects.append(parsed_response)
-
-            except json.JSONDecodeError as e:
-                self.logger.info(f"Error parsing JSON for {filename}: {e}")
-                self.logger.info(f"Response text:\n{response.text}")
-                continue
+                projects.append(parsed_response)
             except Exception as e:
-                self.logger.info(f"An unexpected error occurred processing {filename}: {e}")
+                self.logger.info(f"Error processing project file: {e}")
                 continue
 
         # Combine candidate data and projects
@@ -146,8 +161,13 @@ class OnboardPortfolios:
 
         for portfolio_dir in portfolio_dirs:
             self.logger.info(f"Processing portfolio directory: {portfolio_dir}")
-            # No need to reset data here anymore
             self.create_structured_portfolio(portfolio_dir)
+
+        # Print summary of missing resumes
+        if self.missing_resumes:
+            self.logger.warning("\nMissing resumes for the following candidates:")
+            for candidate in self.missing_resumes:
+                self.logger.warning(f"- {candidate}")
 
 
 if __name__ == "__main__":
