@@ -11,6 +11,11 @@ from .chat import send_response_in_thread
 
 dotenv.load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+# Add approved channel IDs as integers
+APPROVED_CHANNELS = [
+    int(channel_id) for channel_id in os.getenv("APPROVED_CHANNELS", "").split(",")
+    if channel_id
+]
 
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
@@ -46,10 +51,10 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if client.user.mentioned_in(message):
-        logger.info(f"Received message: {message.content}")
-        query = message.content.replace(f'<@{client.user.id}>', '').strip()
-
+    # Check if message is in an approved channel
+    if message.channel.id in APPROVED_CHANNELS:
+        logger.info(f"Received message in approved channel: {message.content}")
+        query = message.content
 
         # Intent classification
         intent = await agent.classify_intent(query)
