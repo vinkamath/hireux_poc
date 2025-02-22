@@ -5,7 +5,7 @@ import logging
 
 from . import agent
 from .vectordb import load_index
-from .chat import send_response_in_thread
+from . import chat
 from .conversation import ConversationManager, WorkflowState
 from src.common.utility import process_pdf
 from .responses import BotResponses
@@ -115,10 +115,16 @@ async def on_message(message):
                         job_description = await process_pdf(f"temp_{message.id}.pdf")
                         # Clean up
                         os.remove(f"temp_{message.id}.pdf")
+                        logger.info(f"Removed temp file: temp_{message.id}.pdf")
                         
                         if not job_description:
                             await message.reply(BotResponses.PDF_PROCESSING_ERROR.message)
                             return
+                        else:
+                            # Truncate job description if it exceeds preview length
+                            if len(job_description) > chat.MSG_PREVIEW_LEN:
+                                job_description = job_description[:chat.MSG_PREVIEW_LEN - 3] + "..."
+                            await message.reply(job_description)
                             
                     except Exception as e:
                         logger.error(f"Error processing PDF: {e}")
@@ -134,8 +140,8 @@ async def on_message(message):
                     return
 
                 # Move to next state and process
-                conversation.state = WorkflowState.USER_ONBOARDING
-                await agent.handle_candidate_request(message, job_description, index)
+                conversation.state = WorkflowState.AWAITING_CANDIDATE_LIST
+                await message.reply(BotResponses.format_with_example(BotResponses.CANDIDATE_LIST_REQUEST))
                 return
 
             elif conversation.state == WorkflowState.USER_ONBOARDING:

@@ -39,6 +39,7 @@ async def process_pdf(filepath: str) -> str:
         text = ""
         for page in reader.pages:
             text += page.extract_text()
+        logger.info(f"Extracted text from PDF: {text}")
         return text.strip()
     except Exception as e:
         logger.error(f"Error processing PDF: {e}")

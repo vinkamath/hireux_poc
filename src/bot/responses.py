@@ -41,6 +41,14 @@ class BotResponses:
         ]
     )
 
+    CANDIDATE_LIST_REQUEST = ResponseTemplate(
+        message="Please provide a list of candidates you'd like to consider for this job as a CSV file.",
+        examples=[
+            "Name, Portfolio URL"
+            "John Doe, https://www.johndoe.com"
+            "Jane Smith, https://www.janesmith.com"
+        ]
+    )
     # General responses
     INTRODUCTION = ResponseTemplate(
         "👋 Hi there! I'm a bot designed to help match UX designers to job descriptions.\n\n"
