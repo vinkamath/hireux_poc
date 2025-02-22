@@ -38,8 +38,10 @@ async def handle_job_description(message: Message, conversation) -> None:
                 return
             
             if len(job_description) > chat.MSG_PREVIEW_LEN:
-                job_description = job_description[:chat.MSG_PREVIEW_LEN - 3] + "..."
-            await message.reply(job_description)
+                job_description_preview = job_description[:chat.MSG_PREVIEW_LEN] + "..."
+            else:
+                job_description_preview = job_description
+            await message.reply("**📄 Extracted Job Description:**(preview)\n```\n" + job_description_preview + "\n```")
             
         except Exception as e:
             logger.error(f"Error processing PDF: {e}")
@@ -50,7 +52,7 @@ async def handle_job_description(message: Message, conversation) -> None:
 
     # Validate job description length
     if len(job_description.split()) < 15:
-        await message.reply(BotResponses.format_with_example(BotResponses.SHORT_DESCRIPTION))
+        await message.reply("**⚠️ Warning:** " + BotResponses.format_with_example(BotResponses.SHORT_DESCRIPTION))
         return
 
     # Move to next state
@@ -60,7 +62,7 @@ async def handle_job_description(message: Message, conversation) -> None:
 async def handle_candidate_list(message: Message, conversation) -> None:
     """Handle the candidate list state."""
     if not message.attachments or not message.attachments[0].filename.lower().endswith('.csv'):
-        await message.reply("Please upload a CSV file with two columns: candidate names and URLs.")
+        await message.reply("**⚠️ Error:** Please upload a CSV file with two columns: candidate names and URLs.")
         return
     
     try:
@@ -142,14 +144,14 @@ def _process_csv_rows(rows):
 async def _send_candidate_processing_response(message, candidates, errors):
     """Send appropriate response based on candidate processing results."""
     if not candidates:
-        await message.reply("❌ No valid candidates could be processed from the CSV. Please ensure:\n"
+        await message.reply("**❌ No valid candidates could be processed from the CSV.** Please ensure:\n"
                          "• The file has exactly 2 columns\n"
-                         "• Names are in 'First Last' format\n"
-                         "• URLs start with http://, https:// or www.")
+                         "• Names are in `First Last` format\n"
+                         "• URLs start with `http://`, `https://` or `www.`")
         if errors:
-            await message.reply("Errors found:\n" + "\n".join(errors))
+            await message.reply("**Errors found:**\n" + "\n".join(f"• {error}" for error in errors))
     else:
-        success_msg = f"✅ Successfully processed {len(candidates)} candidate{'s' if len(candidates) != 1 else ''}"
+        success_msg = f"**✅ Successfully processed {len(candidates)} candidate{'s' if len(candidates) != 1 else ''}**"
         if errors:
-            success_msg += f"\n️❌ ({len(errors)} error{'s' if len(errors) != 1 else ''} encountered)"
-        await message.reply(success_msg) 
+            success_msg += f"\n**❌ ({len(errors)} error{'s' if len(errors) != 1 else ''} encountered)**"
+        await message.reply(success_msg)

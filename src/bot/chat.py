@@ -4,7 +4,7 @@ import logging
 logger = logging.getLogger("bot.chat")
 
 MAX_MSG_LEN = 2000 # Max length of a message in Discord
-MSG_PREVIEW_LEN = 500 # How much of the message to show in a preview
+MSG_PREVIEW_LEN = 100 # How much of the message to show in a preview
 
 async def send_response_in_thread(message: discord.Message, response_text: str):
     """Sends the response in a thread, handling thread creation and errors."""
