@@ -7,6 +7,7 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.llms.openai import OpenAI
 
 from .chat import send_response_in_thread
+from .responses import BotResponses
 
 # Load settings for LlamaIndex
 Settings.llm = OpenAI(model="gpt-4o")
@@ -34,12 +35,6 @@ async def classify_intent(query: str) -> str:
     Query: "Hi there!"
     Category: Other
 
-    Query: "Looking for a software engineer with 5+ years of experience in Python and web development to fill a full-time position at a fast-growing tech startup. Responsibilities include designing, developing, and maintaining web applications, collaborating with cross-functional teams. Requirements Experience with cloud platforms (AWS, Azure, or GCP)."
-    Category: candidate-request
-
-    Query: "What is this bot for?"
-    Category: Other
-
     Query: "{query}"
     Category:
     """
@@ -58,24 +53,12 @@ async def classify_intent(query: str) -> str:
     except Exception as e:
         logger.error(f"Error during intent classification: {e}")
         return "Other"  # Default to "Other" on error
+
 def get_short_query_message() -> str:
-    """Returns the message for when the query is too short."""
-    return (
-            "Please provide a more detailed job description or candidate requirements. "
-            "This helps me search the database effectively and find the best matches for you. The more context, the better the results!"
-    )
+    return BotResponses.format_with_example(BotResponses.SHORT_DESCRIPTION)
 
 def get_introductory_message() -> str:
-    """Returns the introductory message for the bot."""
-    return (
-        "👋 Hi there! I'm a bot designed to help match UX designers to job descriptions.\n\n"
-        "To use me, please provide a job description or specific candidate requirements.  "
-        "The more details you give me, the better I can find the perfect candidates!\n\n"
-        "For example, you can say something like:\n"
-        "`@hireux_bot We are looking for a Senior UX Designer to lead the design of our new mobile app. "
-        "The ideal candidate will have 5+ years of experience in UX design, with a strong portfolio showcasing mobile app design. "
-        "They should be proficient in Figma, Sketch, and user research methodologies.`"
-    )
+    return BotResponses.INTRODUCTION.message
 
 async def handle_candidate_request(message: discord.Message, query: str, index: VectorStoreIndex):
     """Handles a candidate request using the RAG pipeline."""

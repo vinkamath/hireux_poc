@@ -7,6 +7,8 @@ from . import agent
 from .vectordb import load_index
 from .chat import send_response_in_thread
 from .conversation import ConversationManager, WorkflowState
+from src.common.utility import process_pdf
+from .responses import BotResponses
 
 dotenv.load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -33,17 +35,31 @@ conversation_manager = ConversationManager()
 
 @tree.command(name="start", description="Start a conversation with the HireUX bot")
 async def start(interaction: discord.Interaction):
-    # Create a new thread for the conversation
-    thread = await interaction.channel.create_thread(
-        name=f"HireUX Chat with {interaction.user.name}",
-        type=discord.ChannelType.public_thread
-    )
-    
-    # Start a new conversation
-    conversation_manager.start_conversation(thread.id, interaction.user.id)
-    
-    welcome_message = "Hello, I'm the HireUX bot and I'm happy to get you started. Would you like to get started with the job description?"
-    await interaction.response.send_message(welcome_message, thread=thread)
+    try:
+        thread = None
+        
+        # If we're in a thread, use it
+        if isinstance(interaction.channel, discord.Thread):
+            thread = interaction.channel
+        else:
+            # Create a new thread for the conversation
+            thread = await interaction.channel.create_thread(
+                name=f"Onboarding Chat with {interaction.user.name}",
+                type=discord.ChannelType.public_thread
+            )
+        
+        # Start a new conversation
+        conversation_manager.start_conversation(thread.id, interaction.user.id)
+        
+        # First, respond to the interaction
+        await interaction.response.send_message("Starting conversation...", ephemeral=True)
+        
+        # Then send the welcome message in the thread
+        await thread.send(BotResponses.WELCOME.message)
+        logger.info(f"Started new conversation in thread {thread.id} for user {interaction.user.name}")
+    except Exception as e:
+        logger.error(f"Error in start command: {e}")
+        await interaction.response.send_message("Sorry, something went wrong while starting the conversation.", ephemeral=True)
 
 
 @client.event
@@ -65,6 +81,7 @@ async def on_message(message):
     if not (message.channel.id in APPROVED_CHANNELS or 
             (isinstance(message.channel, discord.Thread) and 
              message.channel.parent_id in APPROVED_CHANNELS)):
+        logger.warning(f"Received message in non-approved channel/thread: {message.content}")
         return
 
     logger.info(f"Received message in approved channel/thread: {message.content}")
@@ -72,30 +89,67 @@ async def on_message(message):
     # Check if this is part of an active conversation
     if isinstance(message.channel, discord.Thread):
         conversation = conversation_manager.get_conversation(message.channel.id)
+        # Only allow the original user who started the conversation to interact with it
         if conversation and conversation.user_id == message.author.id:
             # Handle workflow states
             if conversation.state == WorkflowState.AWAITING_START_CONFIRMATION:
                 response_lower = message.content.lower().strip()
                 if response_lower in ['y', 'yes']:
-                    conversation.state = WorkflowState.USER_ONBOARDING
-                    await message.reply("Great! Let's start with the job description. Please paste your job description here.")
+                    conversation.state = WorkflowState.AWAITING_JOB_DESCRIPTION
+                    await message.reply(BotResponses.format_with_example(BotResponses.JOB_DESCRIPTION_REQUEST))
                 else:
                     conversation.state = WorkflowState.COMPLETED
                     conversation_manager.end_conversation(message.channel.id)
-                    await message.reply("No problem! You can still use this thread to chat with me, but we won't go through the guided workflow.")
+                    await message.reply(BotResponses.WORKFLOW_EXIT.message)
+                return
+
+            elif conversation.state == WorkflowState.AWAITING_JOB_DESCRIPTION:
+                # Check for PDF attachment
+                if message.attachments and message.attachments[0].filename.lower().endswith('.pdf'):
+                    # Handle PDF upload
+                    attachment = message.attachments[0]
+                    try:
+                        # Download the PDF
+                        await attachment.save(f"temp_{message.id}.pdf")
+                        # Process the PDF (you'll need to implement this function)
+                        job_description = await process_pdf(f"temp_{message.id}.pdf")
+                        # Clean up
+                        os.remove(f"temp_{message.id}.pdf")
+                        
+                        if not job_description:
+                            await message.reply(BotResponses.PDF_PROCESSING_ERROR.message)
+                            return
+                            
+                    except Exception as e:
+                        logger.error(f"Error processing PDF: {e}")
+                        await message.reply(BotResponses.PDF_PROCESSING_ERROR.message)
+                        return
+                else:
+                    # Handle text input
+                    job_description = message.content
+
+                # Process the job description
+                if len(job_description.split()) < 15:
+                    await message.reply(BotResponses.format_with_example(BotResponses.SHORT_DESCRIPTION))
+                    return
+
+                # Move to next state and process
+                conversation.state = WorkflowState.USER_ONBOARDING
+                await agent.handle_candidate_request(message, job_description, index)
                 return
 
             elif conversation.state == WorkflowState.USER_ONBOARDING:
-                # Handle user onboarding state
+                # TBD: Handle further interaction in the onboarding state
                 query = message.content
-                if len(query.split()) < 15:
-                    await send_response_in_thread(message, agent.get_short_query_message())
-                    return
                 await agent.handle_candidate_request(message, query, index)
                 return
 
     # Handle regular messages (non-workflow)
     query = message.content
+    if query.lower() == 'help':
+        await message.reply(BotResponses.HELP.message)
+        return
+
     intent = await agent.classify_intent(query)
 
     if intent == "candidate-request":

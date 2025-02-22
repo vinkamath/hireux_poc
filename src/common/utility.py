@@ -2,6 +2,8 @@ import yaml
 import logging
 import os
 from dataclasses import asdict
+from PyPDF2 import PdfReader
+
 
 logger = logging.getLogger("common.utility")
 
@@ -29,3 +31,15 @@ def write_json_to_yaml(data_object: dict, output_dir: str) -> None:
     candidate_name = candidate_name.lower().replace(" ", "_")
     with open(f"{output_dir}/{candidate_name}.yaml", 'w') as file:
         file.write(yaml_string)
+
+async def process_pdf(filepath: str) -> str:
+    """Process a PDF file and extract its text content."""
+    try:
+        reader = PdfReader(filepath)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
+        return text.strip()
+    except Exception as e:
+        logger.error(f"Error processing PDF: {e}")
+        raise e

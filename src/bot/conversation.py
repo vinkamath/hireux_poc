@@ -5,6 +5,7 @@ import asyncio
 
 class WorkflowState(Enum):
     AWAITING_START_CONFIRMATION = "awaiting_start_confirmation"
+    AWAITING_JOB_DESCRIPTION = "awaiting_job_description"
     USER_ONBOARDING = "user_onboarding"
     COMPLETED = "completed"
 
