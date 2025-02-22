@@ -144,6 +144,95 @@ async def on_message(message):
                 await message.reply(BotResponses.format_with_example(BotResponses.CANDIDATE_LIST_REQUEST))
                 return
 
+            elif conversation.state == WorkflowState.AWAITING_CANDIDATE_LIST:
+                # Check for CSV attachment
+                if not message.attachments or not message.attachments[0].filename.lower().endswith('.csv'):
+                    await message.reply("Please upload a CSV file with two columns: candidate names and URLs.")
+                    return
+                
+                try:
+                    # Download and process the CSV
+                    attachment = message.attachments[0]
+                    await attachment.save(f"temp_{message.id}.csv")
+                    
+                    import csv
+                    
+                    candidates = {}
+                    errors = []
+                    
+                    with open(f"temp_{message.id}.csv", 'r', encoding='utf-8') as file:
+                        reader = csv.reader(file)
+                        first_row = next(reader, None)
+                        
+                        # Check if first row is a header or data
+                        is_header = True
+                        if first_row and len(first_row) == 2:
+                            url = first_row[1].strip()
+                            if url.startswith(('http://', 'https://', 'www.')):
+                                is_header = False
+                        
+                        # Process rows, including first row if it's data
+                        rows = [first_row] if not is_header else []
+                        rows.extend(reader)
+                        
+                        for row_num, row in enumerate(rows, start=1):  # Start at 1 since we're handling all data rows
+                            if len(row) != 2:
+                                errors.append(f"Row {row_num}: Expected 2 columns, found {len(row)}")
+                                continue
+                                
+                            name, url = row
+                            
+                            # Clean and validate name
+                            name = name.strip()
+                            name_parts = name.split()
+                            if len(name_parts) < 2:
+                                errors.append(f"Row {row_num}: Invalid name format - {name}")
+                                continue
+                            
+                            # Create standardized name key (FirstnameLastname)
+                            key = ''.join(word.capitalize() for word in name_parts)
+                            
+                            # Basic URL validation
+                            url = url.strip()
+                            if not url.startswith(('http://', 'https://', 'www.')):
+                                errors.append(f"Row {row_num}: Invalid URL format - {url}")
+                                continue
+                            
+                            # Ensure www. URLs start with http://
+                            if url.startswith('www.'):
+                                url = 'http://' + url
+                            
+                            candidates[key] = url
+                    
+                    # Clean up temp file
+                    os.remove(f"temp_{message.id}.csv")
+                    
+                    if not candidates:
+                        await message.reply("❌ No valid candidates could be processed from the CSV. Please ensure:\n"
+                                         "• The file has exactly 2 columns\n"
+                                         "• Names are in 'First Last' format\n"
+                                         "• URLs start with http://, https:// or www.")
+                        if errors:
+                            await message.reply("Errors found:\n" + "\n".join(errors))
+                    else:
+                        # Store candidates in conversation state for later use
+                        conversation.candidates = candidates
+                        
+                        success_msg = f"✅ Successfully processed {len(candidates)} candidate{'s' if len(candidates) != 1 else ''}"
+                        if errors:
+                            success_msg += f"\n️❌ ({len(errors)} error{'s' if len(errors) != 1 else ''} encountered)"
+                        
+                        await message.reply(success_msg)
+                        # Move to next state
+                        conversation.state = WorkflowState.COMPLETED
+                        
+                except Exception as e:
+                    logger.error(f"Error processing CSV: {e}")
+                    await message.reply("An error occurred while processing the CSV file. Please ensure the file is properly formatted.")
+                    if os.path.exists(f"temp_{message.id}.csv"):
+                        os.remove(f"temp_{message.id}.csv")
+                return
+
             elif conversation.state == WorkflowState.USER_ONBOARDING:
                 # TBD: Handle further interaction in the onboarding state
                 query = message.content
@@ -160,11 +249,11 @@ async def on_message(message):
 
     if intent == "candidate-request":
         if len(query.split()) < 15:
-            await send_response_in_thread(message, agent.get_short_query_message())
+            await chat.send_response_in_thread(message, agent.get_short_query_message())
             return
         await agent.handle_candidate_request(message, query, index)
     else:
-        await send_response_in_thread(message, agent.get_introductory_message())
+        await chat.send_response_in_thread(message, agent.get_introductory_message())
 
 
 client.run(DISCORD_TOKEN)
