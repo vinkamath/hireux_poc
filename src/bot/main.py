@@ -3,6 +3,7 @@ import discord
 import os
 import dotenv
 import logging
+from discord import app_commands
 
 from . import agent
 from .vectordb import load_index
@@ -13,6 +14,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
 
 # Configure logging
 logging.basicConfig(
@@ -23,12 +25,20 @@ logging.basicConfig(
 logger = logging.getLogger("bot")
 
 
+@tree.command(name="start", description="Start a conversation with the HireUX bot")
+async def start(interaction: discord.Interaction):
+    welcome_message = "Hello, I'm the HireUX bot and I'm happy to get you started. Would you like to get started with the job description?"
+    await interaction.response.send_message(welcome_message)
+
+
 @client.event
 async def on_ready():
     logger.info(f'We have logged in as {client.user}')
     global index
     index = await load_index()
-    logger.info("Index loaded successfully.")
+    # Sync the command tree
+    await tree.sync()
+    logger.info("Index loaded successfully and commands synced.")
 
 
 @client.event
